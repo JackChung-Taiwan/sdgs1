@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>SDG 1 終結貧窮：資源挑戰賽</title>
+    <style>
+        body { margin: 0; background: #e5243b; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; color: white; }
+        canvas { background: #fff; border: 5px solid #d31a2d; box-shadow: 0 0 20px rgba(0,0,0,0.3); cursor: crosshair; }
+        .info { margin-bottom: 10px; text-align: center; }
+        h1 { margin: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="info">
+        <h1>SDG 1: 終結貧窮 - 資源挑戰賽</h1>
+        <p>點擊滑鼠發射「資源球」，消除下墜的貧窮障礙！</p>
+        <div id="scoreBoard">得分: 0 | 漏掉: 0 / 5</div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+
+        let score = 0;
+        let missed = 0;
+        let gameActive = true;
+
+        // 貧窮障礙文字
+        const povertyFactors = ["失業", "缺乏教育", "飢餓", "醫療不足", "住屋不穩", "不公平待遇"];
+        // 資源球文字
+        const resources = ["就業方案", "普及教育", "糧食援助", "醫療保險", "社會津貼", "法律保護"];
+
+        let targets = [];
+        let projectiles = [];
+
+        // 玩家（發射器）位置
+        const player = { x: canvas.width / 2, y: canvas.height - 30 };
+
+        // 監聽點擊事件
+        canvas.addEventListener('mousedown', (e) => {
+            if (!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // 計算角度
+            const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            
+            projectiles.push({
+                x: player.x,
+                y: player.y,
+                vx: Math.cos(angle) * 7,
+                vy: Math.sin(angle) * 7,
+                text: resources[Math.floor(Math.random() * resources.length)]
+            });
+        });
+
+        function createTarget() {
+            if (Math.random() < 0.02) {
+                targets.push({
+                    x: Math.random() * (canvas.width - 100) + 50,
+                    y: -20,
+                    speed: 1 + Math.random() * 2,
+                    text: povertyFactors[Math.floor(Math.random() * povertyFactors.length)]
+                });
+            }
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            createTarget();
+
+            // 更新子彈
+            projectiles.forEach((p, pIndex) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.y < 0 || p.x < 0 || p.x > canvas.width) projectiles.splice(pIndex, 1);
+            });
+
+            // 更新目標
+            targets.forEach((t, tIndex) => {
+                t.y += t.speed;
+
+                // 檢查是否漏掉
+                if (t.y > canvas.height) {
+                    targets.splice(tIndex, 1);
+                    missed++;
+                    if (missed >= 5) gameActive = false;
+                }
+
+                // 碰撞檢測
+                projectiles.forEach((p, pIndex) => {
+                    const dist = Math.hypot(p.x - t.x, p.y - t.y);
+                    if (dist < 40) {
+                        targets.splice(tIndex, 1);
+                        projectiles.splice(pIndex, 1);
+                        score += 10;
+                    }
+                });
+            });
+
+            scoreBoard.innerText = `得分: ${score} | 漏掉: ${missed} / 5`;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 畫玩家
+            ctx.fillStyle = '#e5243b';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 20, 0, Math.PI, true);
+            ctx.fill();
+
+            // 畫子彈 (資源球)
+            projectiles.forEach(p => {
+                ctx.fillStyle = '#26b9da'; // SDG 6/9 色調
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.fillText(p.text, p.x - 20, p.y - 15);
+            });
+
+            // 畫目標 (貧窮因素)
+            targets.forEach(t => {
+                ctx.fillStyle = '#333';
+                ctx.fillRect(t.x - 40, t.y - 15, 80, 30);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(t.text, t.x, t.y + 5);
+            });
+
+            if (!gameActive) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '40px Arial';
+                ctx.fillText('遊戲結束', canvas.width / 2, canvas.height / 2);
+                ctx.font = '20px Arial';
+                ctx.fillText('你成功提供了大量資源協助減貧！', canvas.width / 2, canvas.height / 2 + 50);
+                ctx.fillText('重新整理網頁以再次挑戰', canvas.width / 2, canvas.height / 2 + 90);
+            }
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
